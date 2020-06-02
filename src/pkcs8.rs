@@ -50,38 +50,38 @@ pub fn decode(encoded: &[u8], passphrase: Option<String>) -> Result<(Vec<u8>, Ve
 	let end: usize = PKCS8_HEADER.len() + SEC_LENGTH;
 	secret_key.copy_from_slice(&msg[start..end]);
 
-  let divider_offset = PKCS8_HEADER.len() + SEC_LENGTH;
-  let divider_end = divider_offset + PKCS8_DIVIDER.len();
-  let mut divider = [0u8; PKCS8_DIVIDER.len()];
-  divider.copy_from_slice(&msg[divider_offset..divider_end]);
+	let divider_offset = PKCS8_HEADER.len() + SEC_LENGTH;
+	let divider_end = divider_offset + PKCS8_DIVIDER.len();
+	let mut divider = [0u8; PKCS8_DIVIDER.len()];
+	divider.copy_from_slice(&msg[divider_offset..divider_end]);
 
-  if divider != PKCS8_DIVIDER {
-  	let mut secret_key = [0u8; SEED_LENGTH];
-  	let start: usize = PKCS8_HEADER.len();
+	if divider != PKCS8_DIVIDER {
+		let mut secret_key = [0u8; SEED_LENGTH];
+		let start: usize = PKCS8_HEADER.len();
 		let end: usize = PKCS8_HEADER.len() + SEED_LENGTH;
 		secret_key.copy_from_slice(&msg[start..end]);
-		
+
 		let divider_offset = PKCS8_HEADER.len() + secret_key.len();
 		let divider_end = divider_offset + PKCS8_DIVIDER.len();
 		let mut divider = [0u8; PKCS8_DIVIDER.len()];
-  	divider.copy_from_slice(&msg[divider_offset..divider_end]);
+		divider.copy_from_slice(&msg[divider_offset..divider_end]);
 
-  	if divider != PKCS8_DIVIDER {
-  		return Err(())
-  	}
+		if divider != PKCS8_DIVIDER {
+			return Err(())
+		}
 
 		let pub_offset = PKCS8_HEADER.len() + secret_key.len() + PKCS8_DIVIDER.len();
 		let mut public_key: Vec<u8> = vec![0u8; msg.len() - pub_offset];
 		public_key.copy_from_slice(&msg[pub_offset..]);
 
 		Ok((public_key.to_vec(), secret_key.to_vec()))
-  } else {
-  	let pub_offset = PKCS8_HEADER.len() + secret_key.len() + PKCS8_DIVIDER.len();
+	} else {
+		let pub_offset = PKCS8_HEADER.len() + secret_key.len() + PKCS8_DIVIDER.len();
 		let mut public_key = vec![0u8; msg.len() - pub_offset];
 		public_key.copy_from_slice(&msg[pub_offset..]);
 
 		Ok((public_key.to_vec(), secret_key.to_vec()))
-  }
+	}
 }
 
 pub fn encode(secret_key: &[u8], public_key: &[u8], passphrase: Option<String>) -> Result<Vec<u8>, ()> {
