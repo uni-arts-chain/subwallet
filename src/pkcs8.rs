@@ -16,7 +16,7 @@ pub const SEED_LENGTH: usize = 32;
 pub fn decode(encoded: &[u8], passphrase: Option<String>) -> Result<(Vec<u8>, Vec<u8>), ()> {
 	let encoded_length = encoded.len();
 
-	let mut nonce = [0u8; SECRETBOX_NONCE_LEN];
+	let mut nonce: SecretboxNonce = [0u8; SECRETBOX_NONCE_LEN];
 	nonce.copy_from_slice(&encoded[0..SECRETBOX_NONCE_LEN]);
 
 	let msg = match passphrase {

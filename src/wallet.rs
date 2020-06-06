@@ -5,10 +5,12 @@ use serde_json::json;
 
 use std::path::PathBuf;
 use std::time::SystemTime;
+use std::fs;
 
 use crate::keystore::{Keystore, Encoding};
 use crate::crypto::*;
 use crate::pkcs8;
+use crate::networks::Network;
 
 const DEFAULT_WALLET_NAME: &'static str = "polkadot";
 
@@ -38,7 +40,7 @@ impl Address {
 				version: "2".to_owned(),
 			},
 			meta: json!({
-				"genesisHash": "",
+				"genesisHash": Network::default().genesis_hash(),
 				"name": self.label,
 				"tags": [],
 				"whenCreated": self.created_at,
@@ -56,6 +58,8 @@ impl Address {
 			},
 			"ecdsa" => {
 				let pair = Ecdsa::pair_from_secret_slice(&self.seed[..]).unwrap();
+				// Use `https://polkadot.js.org/apps` compatible address format
+				keystore.address = Ecdsa::to_js_ss58check(&pair);
 				(pair.public().to_raw_vec(), pair.to_raw_vec())
 			}
 			_ => unreachable!()
@@ -72,7 +76,7 @@ impl Address {
 		address.label = keystore.label();
 		address.created_at = keystore.when_created();
 		address.crypto_type = keystore.crypto().clone();
-		address.network = "polkadot".to_owned();
+		address.network = Network::from_genesis_hash(&keystore.genesis_hash()).into();
 
 		match keystore.crypto().as_str() {
 			"ecdsa" => {
@@ -116,7 +120,7 @@ impl Address {
 			label: String::default(),
 			addr: addr,
 			crypto_type: T::crypto_type().to_owned(),
-			network: "polkadot".to_owned(),
+			network: Network::default().into(),
 			seed: seed_slice.to_vec(),
 			created_at: now,
 		}
@@ -142,11 +146,10 @@ impl Wallet {
 		let addr = address.clone().addr;
 		if self.get(addr.as_str()).is_none() {
 			self.address_book.push(address);
-		} else {
-			eprintln!("Address `{}` is already exists.", addr);
 		}
 	}
 
+	#[allow(dead_code)]
 	pub fn delete(&mut self, label: &str) {
 		self.address_book.retain(|address| address.label.as_str() != label );
 	}
@@ -170,9 +173,13 @@ impl WalletStore {
 		}).unwrap_or_else(|| {
 			let mut file = dirs::home_dir().unwrap();
 			file.push(".subwallet");
-			file.push("polkadot");
+			file.push(DEFAULT_WALLET_NAME);
 			file
 		});
+
+		if !file.exists() {
+			fs::create_dir_all(file.parent().unwrap()).expect("Failed to create wallet file");
+		}
 
 		let backend = Wallet::new(DEFAULT_WALLET_NAME.to_owned());
 		let db = FileDatabase::<Wallet, Bincode>::from_path(file, backend).expect("Failed to initialize file database.");

@@ -3,6 +3,10 @@ name = "subwallet"
 version = "0.1.0"
 authors = ["yxf <yxf4559@gmail.com>"]
 edition = "2018"
+homepage = "https://github.com/yxf/subwallet"
+repository = "https://github.com/yxf/subwallet"
+description = "CLI Wallet for Polkadot/Substrate"
+license = "MIT"
 
 
 [dependencies]
@@ -15,11 +19,8 @@ rpassword = "4.0.1"
 hex = "0.4.0"
 rand = "0.7.2"
 dirs = "2.0"
-
 sodalite = "0.3.0"
 tweetnacl = "0.2.1"
 schnorrkel = { version = "0.9.1", features = ["preaudit_deprecated", "u64_backend"], default-features = false }
 sp-core = { version = "2.0.0-rc2" }
-
-
 blake2-rfc = { version = "0.2.18" }

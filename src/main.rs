@@ -4,6 +4,7 @@ mod crypto;
 mod command;
 mod wallet;
 mod pkcs8;
+mod networks;
 
 use sp_core::crypto::{Ss58AddressFormat, set_default_ss58_version};
 use std::path::Path;
@@ -23,7 +24,7 @@ fn main() {
 			let label = matches.value_of("label").unwrap();
 			let mut address = if matches.is_present("ed25519") {
 				Address::generate::<Ed25519>()
-			} else if matches.is_present("secp256k1") {
+			} else if matches.is_present("ecdsa") {
 				Address::generate::<Ecdsa>()
 			} else {
 				Address::generate::<Sr25519>()
@@ -53,7 +54,7 @@ fn main() {
 			let password = rpassword::read_password_from_tty(Some("Password: ")).ok();
 			if let Ok(address) = Address::from_keystore(keystore, password) {
 				store.save(address.clone());
-				println!("Address `{}` is restored", address.addr);
+				println!("{} is restored", address.addr);
 			} else {
 				println!("Failed to recover address");
 				return

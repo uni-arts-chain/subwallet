@@ -7,17 +7,17 @@ pub fn get_app<'a, 'b>() -> App<'a, 'b> {
 			.version(env!("CARGO_PKG_VERSION"))
 			.subcommands(vec![
 				SubCommand::with_name("getnewaddress")
-					.about("Generate a new address. if label is specified, the address will be associated with label")
+					.about("Generate a new address associated with label, deafult cryptography is sr25519")
 					.arg(Arg::with_name("label")
 						.help("The label name for the address to be linked to.")
 						.required(true)
 					).args_from_usage("
 						-e, --ed25519 'Use Ed25519/BIP39 cryptography'
-						-k, --secp256k1 'Use SECP256k1/ECDSA/BIP39 cryptography'
+						-k, --ecdsa   'Use SECP256k1/ECDSA/BIP39 cryptography'
 						-s, --sr25519 'Use Schnorr/Ristretto x25519/BIP39 cryptography'
 					"),
 				SubCommand::with_name("listaddresses")
-					.about("Return the list of addresses"),
+					.about("Prints the list of addresses"),
 
 				SubCommand::with_name("restore")
 					.about("Restore address from json file")
