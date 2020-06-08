@@ -128,6 +128,184 @@ impl Address {
 
 }
 
+#[cfg(test)]
+mod address_tests {
+	use hex_literal::hex;
+	use sp_core::{ 
+		crypto::{Ss58AddressFormat, set_default_ss58_version},
+		ed25519, sr25519, ecdsa, Pair
+	};
+	use super::Address;
+	use crate::keystore::Keystore;
+	use crate::crypto::*;
+
+	fn setup() {
+		set_default_ss58_version(Ss58AddressFormat::PolkadotAccount);
+	}
+
+	#[test]
+	fn generate_should_works() {
+		let ed_address = Address::generate::<Ed25519>();
+		assert_ne!(ed_address.seed, Vec::<u8>::new());
+
+		let sr_address = Address::generate::<Sr25519>();
+		assert_ne!(sr_address.seed, Vec::<u8>::new());
+
+		let ec_address = Address::generate::<Ecdsa>();
+		assert_ne!(ec_address.seed, Vec::<u8>::new());
+	}
+
+	#[test]
+	fn test_from_keystore_with_incorrect_password() {
+		setup();
+		let keystore = Keystore::parse_from_file("tests/fixtures/ecdsa.json".into()).unwrap();
+		let password = Some("incorrect".to_owned()); // 111111 is correct password
+		match Address::from_keystore(keystore, password) {
+			Ok(_) => unreachable!(),
+			Err(e) => assert_eq!(e, ()),
+		}
+	}
+
+
+	#[test]
+	fn test_from_keystore_for_ecdsa() {
+		setup();
+
+		let keystore = Keystore::parse_from_file("tests/fixtures/ecdsa.json".into()).unwrap();
+		let password = Some("111111".to_string());
+
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let pair = ecdsa::Pair::from_seed(&seed);
+
+		let expect_address = Address {
+			addr: "13SmLJEpENqt1mdZsFjhq8BgYYTBPAgPxrjaad4yNd4Bgw7Y".to_owned(),
+			label: "ecdsa".to_owned(),
+			crypto_type: "ecdsa".to_owned(),
+			seed: pair.to_raw_vec(),
+			network: "polkadot".to_owned(),
+			created_at: 1591600236132u64,
+		};
+
+		let mut address = Address::from_keystore(keystore, password).unwrap();
+		address.addr = Ecdsa::to_js_ss58check(&pair);
+
+		assert_eq!(address, expect_address);
+	}
+
+	#[test]
+	fn test_from_keystore_for_sr25519() {
+		setup();
+
+		let keystore = Keystore::parse_from_file("tests/fixtures/sr25519.json".into()).unwrap();
+		let password = Some("111111".to_string());
+
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let pair = sr25519::Pair::from_seed(&seed);
+
+		let expect_address = Address {
+			addr: "14cwHq7pwagFBTdT9E3TTzh2WsuugSAoxL53fpywct2KVSQG".to_owned(),
+			label: "sr25519".to_owned(),
+			crypto_type: "sr25519".to_owned(),
+			seed: pair.to_raw_vec(),
+			network: "polkadot".to_owned(),
+			created_at: 1591600865993u64,
+		};
+		let address = Address::from_keystore(keystore, password).unwrap();
+		assert_eq!(address, expect_address);
+	}
+
+		#[test]
+	fn test_from_keystore_for_ed25519() {
+		setup();
+
+		let keystore = Keystore::parse_from_file("tests/fixtures/ed25519.json".into()).unwrap();
+		let password = Some("111111".to_string());
+
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let pair = ed25519::Pair::from_seed(&seed);
+
+		let expect_address = Address {
+			addr: "14TouV8puYdaN72wMvNirvZsvcvYk5GRfTwJ7XF4P9fibL3m".to_owned(),
+			label: "ed25519".to_owned(),
+			crypto_type: "ed25519".to_owned(),
+			seed: pair.to_raw_vec(),
+			network: "polkadot".to_owned(),
+			created_at: 1591600763959u64,
+		};
+		let address = Address::from_keystore(keystore, password).unwrap();
+		assert_eq!(address, expect_address);
+	}
+
+	#[test]
+	fn test_into_keystore_for_ecdsa() {
+		setup();
+
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let pair = ecdsa::Pair::from_seed(&seed);
+
+		let address = Address {
+			addr: pair.public().to_ss58check(),
+			label: "ecdsa".to_owned(),
+			crypto_type: "ecdsa".to_owned(),
+			seed: pair.to_raw_vec(),
+			network: "polkadot".to_owned(),
+			created_at: 1591600236132u64,
+		};
+		let password = Some("111111".to_owned());
+		let keystore = address.into_keystore(password.clone());
+
+		let decoded_address = Address::from_keystore(keystore, password).unwrap();
+		assert_eq!(address, decoded_address);
+	}
+
+
+	#[test]
+	fn test_into_keystore_for_sr25519() {
+		setup();
+
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let pair = sr25519::Pair::from_seed(&seed);
+
+		let address = Address {
+			addr: pair.public().to_ss58check(),
+			label: "sr25519".to_owned(),
+			crypto_type: "sr25519".to_owned(),
+			seed: pair.to_raw_vec(),
+			network: "polkadot".to_owned(),
+			created_at: 1591600236132u64,
+		};
+		let password = Some("111111".to_owned());
+		let keystore = address.into_keystore(password.clone());
+
+		let decoded_address = Address::from_keystore(keystore, password).unwrap();
+		assert_eq!(address, decoded_address);
+	}
+
+	#[test]
+	fn test_into_keystore_for_ed25519() {
+		setup();
+
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let pair = ed25519::Pair::from_seed(&seed);
+
+		let address = Address {
+			addr: pair.public().to_ss58check(),
+			label: "ed25519".to_owned(),
+			crypto_type: "ed25519".to_owned(),
+			seed: pair.to_raw_vec(),
+			network: "polkadot".to_owned(),
+			created_at: 1591600236132u64,
+		};
+		let password = Some("111111".to_owned());
+		let keystore = address.into_keystore(password.clone());
+
+		let decoded_address = Address::from_keystore(keystore, password).unwrap();
+		assert_eq!(address, decoded_address);
+	}
+}
+
+
+
 #[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Wallet {
 	pub name: String,

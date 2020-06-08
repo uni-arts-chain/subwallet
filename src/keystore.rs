@@ -71,6 +71,71 @@ impl Keystore {
 }
 
 
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use hex_literal::hex;
+	use sp_core::{ ed25519, sr25519, ecdsa, Pair };
+
+	#[test]
+	fn test_parse_invalid_json_file() {
+		match Keystore::parse_from_file("tests/fixtures/invalid.json".into()) {
+			Ok(_) => unreachable!(),
+			Err(e) => assert_eq!(e, ())
+		}
+	}
+
+	#[test]
+	fn test_parse_valid_json_file() {
+		match Keystore::parse_from_file("tests/fixtures/ecdsa.json".into()) {
+			Ok(keystore) => {
+				assert_eq!(keystore.address, "13SmLJEpENqt1mdZsFjhq8BgYYTBPAgPxrjaad4yNd4Bgw7Y");
+				assert_eq!(keystore.encoding.content[1], "ecdsa");
+			}
+			Err(_) => unreachable!()
+		}
+	}
+
+
+	#[test]
+	fn test_into_pair_for_ecdsa() {
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let expect_pair = ecdsa::Pair::from_seed(&seed);
+		
+		let keystore = Keystore::parse_from_file("tests/fixtures/ecdsa.json".into()).unwrap();
+		let password = Some("111111".to_string());
+		let pair = keystore.into_pair::<Ecdsa>(password).unwrap();
+		assert_eq!(pair.to_raw_vec(), expect_pair.to_raw_vec());
+		assert_eq!(pair.public(), expect_pair.public());
+	}
+
+	#[test]
+	fn test_into_pair_for_ed25519() {
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let expect_pair = ed25519::Pair::from_seed(&seed);
+
+		let keystore = Keystore::parse_from_file("tests/fixtures/ed25519.json".into()).unwrap();
+		let password = Some("111111".to_string());
+		let pair = keystore.into_pair::<Ed25519>(password).unwrap();
+
+		assert_eq!(pair.to_raw_vec(), expect_pair.to_raw_vec());
+		assert_eq!(pair.public(), expect_pair.public());
+	}
+
+	#[test]
+	fn test_into_pair_for_sr25519() {
+		let seed = hex!("bda7ce4ab5c0bdcfbf3f5353adb1ae795aa793261dd478c26cb97735b68bc687");
+		let expect_pair = sr25519::Pair::from_seed(&seed);
+
+		let keystore = Keystore::parse_from_file("tests/fixtures/sr25519.json".into()).unwrap();
+		let password = Some("111111".to_string());
+		let pair = keystore.into_pair::<Sr25519>(password).unwrap();
+
+		assert_eq!(pair.to_raw_vec(), expect_pair.to_raw_vec());
+		assert_eq!(pair.public(), expect_pair.public());
+	}
+
+}
 
 
 
