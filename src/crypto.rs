@@ -1,6 +1,6 @@
 
 pub use sp_core::{
-	crypto::{set_default_ss58_version, Ss58AddressFormat, Ss58Codec, Derive },
+	crypto::{set_default_ss58_version, Ss58AddressFormat, Ss58Codec, Derive, AccountId32 },
 	ed25519, sr25519, ecdsa, Pair, Public,
 };
 
@@ -13,6 +13,8 @@ pub trait Crypto: Sized {
 	fn pair_from_secret_slice(slice: &[u8]) -> Result<Self::Pair, ()>;
 
 	fn crypto_type() -> &'static str;
+
+	fn to_address<P: Pair>(pair: &P) -> String;
 }
 
 pub struct Ed25519;
@@ -40,29 +42,14 @@ impl Crypto for Ed25519 {
 	}
 
 	fn crypto_type() -> &'static str { "ed25519" }
+
+	fn to_address<P: Pair>(pair: &P) -> String {
+		pair.public().to_ss58check()
+	}
 }
 
 
 pub struct Ecdsa;
-struct EcdsaPublic([u8; 32]);
-impl Derive for EcdsaPublic {}
-
-impl Default for EcdsaPublic {
-	fn default() -> Self {
-		EcdsaPublic([0u8; 32])
-	}
-}
-
-impl AsRef<[u8]> for EcdsaPublic {
-	fn as_ref(&self) -> &[u8] {
-		&self.0[..]
-	}
-}
-impl AsMut<[u8]> for EcdsaPublic {
-	fn as_mut(&mut self) -> &mut [u8] {
-		&mut self.0[..]
-	}
-}
 
 impl Crypto for Ecdsa {
 	type Pair = ecdsa::Pair;
@@ -76,19 +63,17 @@ impl Crypto for Ecdsa {
 	}
 
 	fn crypto_type() -> &'static str { "ecdsa" }
-}
 
-impl Ecdsa {
-	// Return `https://github.com/polkadot-js` compatible address.
-	pub fn to_js_ss58check<P: Pair>(pair: &P) -> String {
+	fn to_address<P: Pair>(pair: &P) -> String {
 		let raw = pair.public().to_raw_vec();
 		let hash = Self::prehash(&raw[..]);
 		let mut raw = [0u8; 32];
 		raw.copy_from_slice(&hash.as_bytes()[..]);
-		let public = EcdsaPublic(raw);
-		public.to_ss58check()
+		AccountId32::from(raw).to_ss58check()
 	}
+}
 
+impl Ecdsa {
 	fn prehash(data: &[u8]) -> Blake2bResult {
 		let mut context = Blake2b::new(32);
 		context.update(data);
@@ -117,6 +102,10 @@ impl Crypto for Sr25519 {
 	}
 
 	fn crypto_type() -> &'static str { "sr25519" }
+
+	fn to_address<P: Pair>(pair: &P) -> String {
+		pair.public().to_ss58check()
+	}
 }
 
 

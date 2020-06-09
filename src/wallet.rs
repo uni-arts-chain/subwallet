@@ -58,8 +58,6 @@ impl Address {
 			},
 			"ecdsa" => {
 				let pair = Ecdsa::pair_from_secret_slice(&self.seed[..]).unwrap();
-				// Use `https://polkadot.js.org/apps` compatible address format
-				keystore.address = Ecdsa::to_js_ss58check(&pair);
 				(pair.public().to_raw_vec(), pair.to_raw_vec())
 			}
 			_ => unreachable!()
@@ -81,7 +79,7 @@ impl Address {
 		match keystore.crypto().as_str() {
 			"ecdsa" => {
 				if let Ok(pair) = keystore.into_pair::<Ecdsa>(password) {
-					address.addr = pair.public().to_ss58check();
+					address.addr = Ecdsa::to_address(&pair);
 					address.seed = pair.to_raw_vec();
 				} else {
 					return Err(())
@@ -89,7 +87,7 @@ impl Address {
 			},
 			"sr25519" => {
 				if let Ok(pair) = keystore.into_pair::<Sr25519>(password) {
-					address.addr = pair.public().to_ss58check();
+					address.addr = Sr25519::to_address(&pair);
 					address.seed = pair.to_raw_vec();
 				} else {
 					return Err(())
@@ -97,7 +95,7 @@ impl Address {
 			},
 			"ed25519" => {
 				if let Ok(pair) = keystore.into_pair::<Ed25519>(password) {
-					address.addr = pair.public().to_ss58check();
+					address.addr = Ed25519::to_address(&pair);
 					address.seed = pair.to_raw_vec();
 				} else {
 					return Err(())
@@ -114,7 +112,7 @@ impl Address {
 	pub fn generate<T: Crypto>() -> Self {
 		let (pair, _, seed) = T::Pair::generate_with_phrase(None);
 		let seed_slice: &[u8] = seed.as_ref();
-		let addr = pair.public().to_ss58check();
+		let addr = T::to_address(&pair);
 		let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as u64;
 		Address {
 			label: String::default(),
@@ -186,8 +184,7 @@ mod address_tests {
 			created_at: 1591600236132u64,
 		};
 
-		let mut address = Address::from_keystore(keystore, password).unwrap();
-		address.addr = Ecdsa::to_js_ss58check(&pair);
+		let address = Address::from_keystore(keystore, password).unwrap();
 
 		assert_eq!(address, expect_address);
 	}
@@ -244,7 +241,7 @@ mod address_tests {
 		let pair = ecdsa::Pair::from_seed(&seed);
 
 		let address = Address {
-			addr: pair.public().to_ss58check(),
+			addr: Ecdsa::to_address(&pair),
 			label: "ecdsa".to_owned(),
 			crypto_type: "ecdsa".to_owned(),
 			seed: pair.to_raw_vec(),
