@@ -9,6 +9,7 @@ description = "CLI Wallet for Polkadot/Substrate"
 license = "MIT"
 
 
+
 [dependencies]
 clap = "2.33.0"
 rustbreak = { version = "2.0.0-rc3", features=["bin_enc"] }
@@ -21,8 +22,47 @@ rand = "0.7.2"
 dirs = "2.0"
 sodalite = "0.3.0"
 schnorrkel = { version = "0.9.1", features = ["preaudit_deprecated", "u64_backend"], default-features = false }
-sp-core = { version = "2.0.0-rc2" }
 blake2-rfc = { version = "0.2.18" }
+codec = { package = "parity-scale-codec", version = "1.2.0", default-features = false, features = ["derive"] }
+jsonrpsee = { version = "0.1.0", features = ["ws"] }
+thiserror = "1.0.9"
+futures = "0.3.5"
+toml = "0.5.6"
+num_cpus = { version = "1.8.0" }
+regex = "1"
+indicatif = "0.15"
+rust_decimal = "1.7"
+async-std = { version = "1.6.2", features = ["attributes"] }
+
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+frame-metadata = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+sp-rpc = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+transaction-payment = { package="pallet-transaction-payment", git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+grandpa = { package = "pallet-grandpa", git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+
+[dependencies.runtime]
+package = "polkadot-runtime"
+git = "https://github.com/paritytech/polkadot"
+default-features = true
+
+[dependencies.runtime-common]
+package = "polkadot-runtime-common"
+git = "https://github.com/paritytech/polkadot"
+default-features = true
+
+[dependencies.polkadot-primitives]
+package = "polkadot-primitives"
+git = "https://github.com/paritytech/polkadot"
+default-features = true
+
+# runtime =  { package = "polkadot-runtime", path = "../polkadot/runtime/polkadot", default-features = true }
+# runtime-common =  { package = "polkadot-runtime-common", path = "../polkadot/runtime/common", default-features = true }
+# primitives =  { package = "polkadot-primitives", path = "../polkadot/primitives", default-features = true }
+
 
 [dev-dependencies]
 hex-literal = "0.2.1"
+tokio = { version = "0.2", features = ["full"] }

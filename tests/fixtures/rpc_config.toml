@@ -1,0 +1,3 @@
+[rpc]
+kusama = "wss://kusama-rpc.polkadot.io"
+polkadot = "wss://rpc.polkadot.io"

@@ -30,5 +30,50 @@ pub fn get_app<'a, 'b>() -> App<'a, 'b> {
 						<label>  'Address or label to backup'
 						<path>  'The destination directory or file'
 					"),
+				SubCommand::with_name("getbalances")
+					.about("Query balances of addresses"),
+
+				SubCommand::with_name("syncextrinsics")
+					.alias("syncxts")
+					.about("Download and save extrinsics from remote node to local file through RPC. Alias `syncxts`")
+					.arg(Arg::with_name("label_or_address")
+						.help("The address or label")
+						.required(false)
+					),
+				SubCommand::with_name("listextrinsics")
+					.alias("listxts")
+					.about("Print the list of extrinsics. Alias `listxts`")
+					.args_from_usage("
+						<label_or_address> 'The Address or label'
+					"),
+				SubCommand::with_name("setrpcurl")
+					.about("Save RPC url")
+					.args_from_usage("
+						<url> 'RPC url, exmaple: wss://rpc.polkadot.io'
+					"),
+				SubCommand::with_name("watchaddress")
+					.about("Add a watchonly address")
+					.arg(Arg::with_name("addr")
+						.help("The address")
+						.required(true)
+					)
+					.arg(Arg::with_name("label")
+						.help("The label")
+						.required(false)
+					),
+				SubCommand::with_name("transfer")
+					.about("Submit a transfer transaction")
+					.arg(Arg::with_name("from")
+						.help("The source address")
+						.required(true)
+					)
+					.arg(Arg::with_name("to")
+						.help("The destination address")
+						.required(true)
+					)
+					.arg(Arg::with_name("amount")
+						.help("Amount to be send")
+						.required(true)
+					),
 			])
 }

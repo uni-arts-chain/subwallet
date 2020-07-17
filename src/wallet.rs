@@ -27,8 +27,16 @@ pub struct Address {
 
 impl Address {
 	pub fn print(&self) {
-		println!("{:<15} {:<55} {:<7}", self.label, self.addr, self.crypto_type);
+		if self.seed.len() == 0 {
+			println!("{:<15} {:<55} {:<7}", self.label, self.addr, "*");
+		} else {
+			println!("{:<15} {:<55} {:<7}", self.label, self.addr, self.crypto_type);
+		}
 	}
+
+	pub fn is_watchonly(&self) -> bool {
+		self.seed.len() == 0
+	} 
 
 	pub fn into_keystore(&self, password: Option<String>) -> Keystore {
 		let mut keystore = Keystore {
@@ -124,6 +132,9 @@ impl Address {
 		}
 	}
 
+	pub fn into_pair<T: Crypto>(&self) -> <T as Crypto>::Pair {
+		T::pair_from_secret_slice(&self.seed[..]).unwrap()
+	}
 }
 
 #[cfg(test)]
@@ -344,7 +355,9 @@ pub struct WalletStore(FileDatabase<Wallet, Bincode>);
 impl WalletStore {
 	pub fn init(path: Option<&str>) -> Self {
 		let file = path.map(|v| {
-			PathBuf::from(v)
+			let mut file = PathBuf::from(v);
+			file.push(DEFAULT_WALLET_NAME);
+			file
 		}).unwrap_or_else(|| {
 			let mut file = dirs::home_dir().unwrap();
 			file.push(".subwallet");
@@ -355,7 +368,6 @@ impl WalletStore {
 		if !file.exists() {
 			fs::create_dir_all(file.parent().unwrap()).expect("Failed to create wallet file");
 		}
-
 		let backend = Wallet::new(DEFAULT_WALLET_NAME.to_owned());
 		let db = FileDatabase::<Wallet, Bincode>::from_path(file, backend).expect("Failed to initialize file database.");
 		Self(db)

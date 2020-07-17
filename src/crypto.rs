@@ -3,7 +3,6 @@ pub use sp_core::{
 	crypto::{set_default_ss58_version, Ss58AddressFormat, Ss58Codec, Derive, AccountId32 },
 	ed25519, sr25519, ecdsa, Pair, Public,
 };
-
 use blake2_rfc::blake2b::{ Blake2b, Blake2bResult };
 
 pub trait Crypto: Sized {
@@ -72,6 +71,7 @@ impl Crypto for Ecdsa {
 		AccountId32::from(raw).to_ss58check()
 	}
 }
+
 
 impl Ecdsa {
 	fn prehash(data: &[u8]) -> Blake2bResult {
