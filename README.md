@@ -91,6 +91,58 @@ Type password to encrypt seed: # password
 Address `15FarxkDPL7LPvBPd1RDMGugGFs8be2ijuHEuLJd9z67PdNm` is backed up to file `~/demo.json`
 ```
 
+#### `setrpcurl`
+Save RPC url to local file
+
+Example:
+```bash
+./subwallet setrpcurl wss://rpc.polkadot.io
+```
+
+#### `getbalances`
+Show the balances of addresses
+
+Example:
+```bash
+./subwallet getbalances
+145CPZPTqovQNkYMwEJ1himG3GYEVW2jJrzWDR9mButvjca                              0 DOT
+14cstG1jBDJuPGcAf41cmX6QWuF2AxN3sMWaxtPac9D5cToJ             52717.460021565876 DOT
+1Qobp4G1snJPNWPz3onWpDVJGXtipBeF2EdLEdXT9aRRENe               531.509335187554 DOT
+15UZUsnbRcUdYLfNjwCy5BzSLFi9Dc14FudUGuZ6AkbtEYv5                              0 DOT
+```
+
+#### `syncextrinsics` or `syncxts`
+Download and save address related extrinsics from remote node to local file through RPC.
+
+This command will scan all related data of addresses by quering storage of account's `System::Events`.
+
+Example:
+```bash
+./subwallet syncextrinsics
+Starting scan from height 0 on wss://rpc.polkadot.io
+⠁ [00:00:00] [==>-------------------------------------]     500/782531
+```
+
+#### `listextrinsics` or `listxts`
+Lists all downloaded extrinsics of address
+
+Example:
+```bash
+./subwallet listextrinsics
+677100-3   15YRTixjLrknN97vqRoVQmmaagfWk2TsmFWqTj6RDfTS2SUE        Utility::batch                 ✅
+656219-3   15YRTixjLrknN97vqRoVQmmaagfWk2TsmFWqTj6RDfTS2SUE        Staking::payout_stakers        ❌
+631650-3   15YRTixjLrknN97vqRoVQmmaagfWk2TsmFWqTj6RDfTS2SUE        Utility::batch                 ✅
+631648-3   15YRTixjLrknN97vqRoVQmmaagfWk2TsmFWqTj6RDfTS2SUE        Utility::batch                 ✅
+...
+```
+
+#### `watchaddress`
+Add watchonly address to local storage.
+```bash
+./subwallet watchaddress 13EAmr66rhEEXD8mq5wiqvJ2aHibBYebF1ys9JRi1qyVjQyk
+`13EAmr66rhEEXD8mq5wiqvJ2aHibBYebF1ys9JRi1qyVjQyk` is added
+```
+
 
 
 ## Contributing

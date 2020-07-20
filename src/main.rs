@@ -248,7 +248,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 			address.label = label.to_string();
 			address.addr = addr.to_string();
 			store.save(address.clone());
-			println!("{}", address.addr);
+			println!("`{}` is added", address.addr);
 		},
 		_ => {
 			app.print_help().unwrap();
