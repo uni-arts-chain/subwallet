@@ -208,13 +208,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
 			let config = rpc::Config::parse_from_file(config_file.as_path())?;
 			let url = config.get_url(Network::Polkadot).ok_or("rpc url is not set")?;
-
-			let rpc = Rpc::new(url.clone()).await;
-			let tip_header = rpc.header(None).await?.unwrap();
-			let total_number = tip_header.number;
 			let accounts: Vec<AccountId> = addresses.iter().map(|address| AccountId::from_ss58check(address.addr.as_str()).unwrap()).collect();
 
-			sync::scan(url, total_number, accounts).await?;
+			sync::scan(url, accounts).await?;
 		},
 		("listextrinsics", Some(matches)) => {
 			let label = matches.value_of("label_or_address").unwrap();

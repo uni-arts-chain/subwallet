@@ -21,20 +21,24 @@ use crate::store::*;
 use frame_support::traits::{GetCallMetadata};
 // use frame_support::dispatch::{Callable, CallableCallFor};
 
-pub async fn scan(url: String, tip_number: u32, accounts: Vec<AccountId>) -> Result<()> {
+pub async fn scan(url: String, accounts: Vec<AccountId>) -> Result<()> {
 	let pool = ThreadPool::new()?;
-	
+		
 	let threads_size = 1u8;
 	let cursors: Vec<u32> = accounts.iter().map(|id| FileStore::get(id.to_ss58check().as_str()).read().scanned_at).collect();
 	let start_number = cursors.iter().min().unwrap_or(&0u32).clone();
 	let cursor = Arc::new(AtomicU64::new(start_number as u64));
+
+	let rpc = Arc::new(Rpc::new(url.clone()).await);
+	let tip_header = rpc.header(None).await?.unwrap();
+	let tip_number = tip_header.number;
 
 	println!("Starting scan from height {:?} on {}", cursor, url.clone());
 	let (tx, mut rx) = unbounded::<Message>();
 	for _i in 0..threads_size {
 		pool.spawn_ok(
 			scan_task(
-				url.clone(), 
+				rpc.clone(),
 				tx.clone(), 
 				accounts.clone(), 
 				cursor.clone(), 
@@ -45,7 +49,7 @@ pub async fn scan(url: String, tip_number: u32, accounts: Vec<AccountId>) -> Res
 	}
 	drop(tx);
 
-	let rpc = Arc::new(Rpc::new(url.to_string()).await);
+	
 	let bar_length = tip_number - start_number;
 	let bar = ProgressBar::new(bar_length as u64);
 	bar.set_style(ProgressStyle::default_bar()
@@ -135,14 +139,13 @@ async fn process(rpc: Arc<Rpc>, msg: Message) {
 }
 
 async fn scan_task(
-	url: String, 
+	rpc: Arc<Rpc>,
 	tx: UnboundedSender<Message>, 
 	accounts: Vec<AccountId>,
 	cursor: Arc<AtomicU64>,
 	step: u64,
 	tip_number: u64)
 {
-	let rpc = Rpc::new(url).await;
 	loop {
 		let now = cursor.load(Ordering::SeqCst);
 		if now > tip_number as u64 {
@@ -153,7 +156,6 @@ async fn scan_task(
 		let end: u32 = p as u32 + step as u32 - 1;
 
 		let (start_hash, end_hash) = join!(rpc.block_hash(Some(start)), rpc.block_hash(Some(end)));
-
   	let mut key = sp_core::twox_128(b"System").to_vec();
   	key.extend(sp_core::twox_128(b"Events").to_vec());
 		let keys = vec![sp_core::storage::StorageKey(key)];
