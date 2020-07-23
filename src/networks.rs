@@ -4,81 +4,81 @@ pub const KUSAMA_GENESIS_HASH: &'static str = "0x92b171bb158e2d3848fa23a9f1c2518
 
 #[derive(Clone, Eq, PartialEq, Debug, Copy)]
 pub enum Network {
-	Polkadot,
-	Kusama,
-	Unknow,
+  Polkadot,
+  Kusama,
+  Unknow,
 }
 
 impl Default for Network {
-	fn default() -> Self {
-		Network::Polkadot
-	}
+  fn default() -> Self {
+    Network::Polkadot
+  }
 }
 
 impl From<&str> for Network {
-	fn from(name: &str) -> Network {
-		match name {
-			"polkadot" => Network::Polkadot,
-			"kusama" => Network::Kusama,
-			_ => Network::Unknow,
-		}
-	}
+  fn from(name: &str) -> Network {
+    match name {
+      "polkadot" => Network::Polkadot,
+      "kusama" => Network::Kusama,
+      _ => Network::Unknow,
+    }
+  }
 }
 
 impl From<u8> for Network {
-	fn from(v: u8) -> Network {
-		match v {
-			0 => Network::Polkadot,
-			2 => Network::Kusama,
-			_ => Network::Unknow,
-		}
-	}
+  fn from(v: u8) -> Network {
+    match v {
+      0 => Network::Polkadot,
+      2 => Network::Kusama,
+      _ => Network::Unknow,
+    }
+  }
 }
 
 impl From<u64> for Network {
-	fn from(v: u64) -> Network {
-		match v {
-			0 => Network::Polkadot,
-			2 => Network::Kusama,
-			_ => Network::Unknow,
-		}
-	}
+  fn from(v: u64) -> Network {
+    match v {
+      0 => Network::Polkadot,
+      2 => Network::Kusama,
+      _ => Network::Unknow,
+    }
+  }
 }
 
 impl From<Network> for &'static str {
-	fn from(n: Network) -> &'static str {
-		match n {
-			Network::Polkadot => "polkadot",
-			Network::Kusama => "kusama",
-			_ => "unknow",
-		}
-	}
+  fn from(n: Network) -> &'static str {
+    match n {
+      Network::Polkadot => "polkadot",
+      Network::Kusama => "kusama",
+      _ => "unknow",
+    }
+  }
 }
 
 impl From<Network> for String {
-	fn from(n: Network) -> String {
-		match n {
-			Network::Polkadot => "polkadot".to_string(),
-			Network::Kusama => "kusama".to_string(),
-			_ => "unknow".to_string(),
-		}
-	}
+  fn from(n: Network) -> String {
+    match n {
+      Network::Polkadot => "polkadot".to_string(),
+      Network::Kusama => "kusama".to_string(),
+      _ => "unknow".to_string(),
+    }
+  }
 }
 
 impl Network {
-	pub fn genesis_hash(&self) -> &'static str {
-		match self {
-			Network::Polkadot => POLKADOT_GENESIS_HASH,
-			Network::Kusama => KUSAMA_GENESIS_HASH,
-			_ => "",
-		}
-	}
+  pub fn genesis_hash(&self) -> &'static str {
+    match self {
+      Network::Polkadot => POLKADOT_GENESIS_HASH,
+      Network::Kusama => KUSAMA_GENESIS_HASH,
+      _ => "",
+    }
+  }
 
-	pub fn from_genesis_hash(hash: &str) -> Self {
-		match hash {
-			POLKADOT_GENESIS_HASH => Network::Polkadot,
-			KUSAMA_GENESIS_HASH => Network::Kusama,
-			_ => Network::Unknow,
-		}
-	}
+  pub fn from_genesis_hash(hash: &str) -> Self {
+    match hash {
+      POLKADOT_GENESIS_HASH => Network::Polkadot,
+      KUSAMA_GENESIS_HASH => Network::Kusama,
+      _ => Network::Unknow,
+    }
+  }
 }

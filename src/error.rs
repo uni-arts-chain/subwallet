@@ -1,6 +1,6 @@
 use jsonrpsee::{
-    client::RequestError,
-    transport::ws::WsNewDnsError,
+  client::RequestError,
+  transport::ws::WsNewDnsError,
 };
 use sp_core::crypto::{ PublicError };
 
