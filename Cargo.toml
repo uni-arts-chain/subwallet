@@ -1,6 +1,6 @@
 [package]
 name = "subwallet"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["yxf <yxf4559@gmail.com>"]
 edition = "2018"
 homepage = "https://github.com/yxf/subwallet"
@@ -66,11 +66,6 @@ package = "polkadot-primitives"
 git = "https://github.com/paritytech/polkadot"
 branch = "master"
 default-features = true
-
-# runtime =  { package = "polkadot-runtime", path = "../polkadot/runtime/polkadot", default-features = true }
-# runtime-common =  { package = "polkadot-runtime-common", path = "../polkadot/runtime/common", default-features = true }
-# primitives =  { package = "polkadot-primitives", path = "../polkadot/primitives", default-features = true }
-
 
 [dev-dependencies]
 hex-literal = "0.2.1"
