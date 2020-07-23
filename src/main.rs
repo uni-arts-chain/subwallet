@@ -1,3 +1,5 @@
+#![feature(get_mut_unchecked)]
+
 mod error;
 mod keystore;
 mod crypto;
@@ -7,9 +9,10 @@ mod pkcs8;
 mod networks;
 mod rpc;
 mod store;
-mod sync;
 mod transfer;
 mod primitives;
+mod sync;
+mod ws_client;
 
 
 use sp_core::crypto::{Ss58AddressFormat, set_default_ss58_version };
@@ -209,7 +212,11 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 			let config = rpc::Config::parse_from_file(config_file.as_path())?;
 			let url = config.get_url(Network::Polkadot).ok_or("rpc url is not set")?;
 			let accounts: Vec<AccountId> = addresses.iter().map(|address| AccountId::from_ss58check(address.addr.as_str()).unwrap()).collect();
-
+			// for account in accounts.iter() {
+			// 	let addr = account.to_ss58check();
+			// 	let store = FileStore::get(addr.as_str());
+			// 	store.update(0);
+			// }
 			sync::scan(url, accounts).await?;
 		},
 		("listextrinsics", Some(matches)) => {

@@ -51,7 +51,7 @@ pub fn make_extrinsic<C: Crypto>(
 			transaction_payment::ChargeTransactionPayment::<Runtime>::from(f),
 			runtime_common::registrar::LimitParathreadCommits::<Runtime>::new(),
 			runtime_common::parachains::ValidateDoubleVoteReports::<Runtime>::new(),
-			grandpa::ValidateEquivocationReport::<Runtime>::new(),
+			// grandpa::ValidateEquivocationReport::<Runtime>::new(),
 			runtime_common::claims::PrevalidateAttests::<Runtime>::new(),
 		)
 	};
@@ -68,7 +68,7 @@ pub fn make_extrinsic<C: Crypto>(
 			(),
 			(),
 			(),
-			(),
+			// (),
 			(),
 		),
 	);

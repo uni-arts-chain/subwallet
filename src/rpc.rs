@@ -115,7 +115,8 @@ impl Rpc {
 
 	pub async fn new(url: String) -> Self {
     let client = if url.starts_with("ws://") || url.starts_with("wss://") {
-        jsonrpsee::ws_client(&url).await.unwrap()
+        // jsonrpsee::ws_client(&url).await.unwrap()
+        crate::ws_client::create(&url)
     } else {
         jsonrpsee::http_client(&url)
     };
@@ -164,8 +165,9 @@ impl Rpc {
 
 	/// Request the metadata
 	#[allow(dead_code)]
-  pub async fn metadata(&self) -> Result<RuntimeMetadata> {
-    let bytes: Bytes = self.client.request("state_getMetadata", Params::None).await?;
+  pub async fn metadata(&self, hash: Option<Hash>) -> Result<RuntimeMetadata> {
+  	let params = Params::Array(vec![to_json_value(hash)?]);
+    let bytes: Bytes = self.client.request("state_getMetadata", params).await?;
     let meta: RuntimeMetadataPrefixed = Decode::decode(&mut &bytes[..])?;
     Ok(meta.1)
   }
@@ -336,7 +338,9 @@ mod tests {
 	#[tokio::test]
 	async fn test_metadata() {
 		let rpc = setup_rpc().await;
-		let meta = rpc.metadata().await;
+		// let hash = rpc.block_hash(Some(212894)).await.unwrap();
+		let meta = rpc.metadata(None).await;
+		println!("meta = {:?}", meta);
 		assert!(meta.is_ok());
 	}
 
@@ -423,9 +427,17 @@ mod tests {
 		let id = AccountId::from_ss58check("1Qobp4G1snJPNWPz3onWpDVJGXtipBeF2EdLEdXT9aRRENe").unwrap();
 
 		let info = rpc.get_account_info(id).await.unwrap();
-
-		println!("info {:?}", info);
-
 		assert!(info.refcount > 0);
+	}
+
+	#[tokio::test]
+	async fn test_decode_block() {
+		let rpc = setup_rpc().await;
+		let hash = rpc.block_hash(Some(212894)).await.unwrap();
+		let block = rpc.block(hash).await;
+		match block {
+			Ok(Some(block)) => assert_eq!(block.block.header.number, 0),
+			_ => unreachable!()
+		}
 	}
 }

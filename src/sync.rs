@@ -23,12 +23,10 @@ use frame_support::traits::{GetCallMetadata};
 
 pub async fn scan(url: String, accounts: Vec<AccountId>) -> Result<()> {
 	let pool = ThreadPool::new()?;
-		
-	let threads_size = 1u8;
+	let threads_size = num_cpus::get() / 2;
 	let cursors: Vec<u32> = accounts.iter().map(|id| FileStore::get(id.to_ss58check().as_str()).read().scanned_at).collect();
 	let start_number = cursors.iter().min().unwrap_or(&0u32).clone();
 	let cursor = Arc::new(AtomicU64::new(start_number as u64));
-
 	let rpc = Arc::new(Rpc::new(url.clone()).await);
 	let tip_header = rpc.header(None).await?.unwrap();
 	let tip_number = tip_header.number;
@@ -47,6 +45,8 @@ pub async fn scan(url: String, accounts: Vec<AccountId>) -> Result<()> {
 			)
 		);
 	}
+		
+
 	drop(tx);
 
 	
@@ -60,11 +60,15 @@ pub async fn scan(url: String, accounts: Vec<AccountId>) -> Result<()> {
 			if recv.is_some() {
 				process(rpc.clone(), recv.unwrap()).await;
 			} else {
-				bar.finish();
 				for account in accounts.iter() {
 					let addr = account.to_ss58check();
 					let store = FileStore::get(addr.as_str());
-					store.update(tip_number);
+					let cur = cursor.load(Ordering::SeqCst) as u32;
+					if cur > tip_number {
+						store.update(tip_number);
+					} else {
+						store.update(cur);
+					}
 				}
 				break;
 			}
@@ -87,8 +91,8 @@ async fn process(rpc: Arc<Rpc>, msg: Message) {
 	let (block_hash, targets) = msg;
 	let block = match rpc.block(Some(block_hash)).await {
 		Ok(signed) => signed.unwrap().block,
-		Err(err) => {
-			println!("err = {:?}", err);
+		Err(_err) => {
+			// TODO process decoding block error
 			return
 		},
 	};
@@ -154,7 +158,6 @@ async fn scan_task(
 		let p = cursor.fetch_add(step, Ordering::SeqCst);
 		let start: u32 = p as u32;
 		let end: u32 = p as u32 + step as u32 - 1;
-
 		let (start_hash, end_hash) = join!(rpc.block_hash(Some(start)), rpc.block_hash(Some(end)));
   	let mut key = sp_core::twox_128(b"System").to_vec();
   	key.extend(sp_core::twox_128(b"Events").to_vec());
@@ -170,7 +173,13 @@ async fn scan_task(
 
     		let mut targets = Vec::new();
     		for _i in 0..len {
-    			let record = EventRecord::decode(&mut input).unwrap();
+    			let record = match EventRecord::decode(&mut input) {
+    				Ok(v) => v,
+    				Err(_err) => {
+    					// TODO process decode error
+    					continue
+    				},
+    			};
    				let event_string = format!("{:?}", record.clone().event);
 
    				let maybe: bool = match record.event {
