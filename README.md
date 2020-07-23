@@ -128,7 +128,7 @@ Lists all downloaded extrinsics of address
 
 Example:
 ```bash
-./subwallet listextrinsics
+./subwallet listextrinsics 15YRTixjLrknN97vqRoVQmmaagfWk2TsmFWqTj6RDfTS2SUE
 677100-3   15YRTixjLrknN97vqRoVQmmaagfWk2TsmFWqTj6RDfTS2SUE        Utility::batch                 ✅
 656219-3   15YRTixjLrknN97vqRoVQmmaagfWk2TsmFWqTj6RDfTS2SUE        Staking::payout_stakers        ❌
 631650-3   15YRTixjLrknN97vqRoVQmmaagfWk2TsmFWqTj6RDfTS2SUE        Utility::batch                 ✅
