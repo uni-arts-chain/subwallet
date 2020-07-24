@@ -340,7 +340,6 @@ mod tests {
     let rpc = setup_rpc().await;
     // let hash = rpc.block_hash(Some(212894)).await.unwrap();
     let meta = rpc.metadata(None).await;
-    println!("meta = {:?}", meta);
     assert!(meta.is_ok());
   }
 
@@ -428,16 +427,5 @@ mod tests {
 
     let info = rpc.get_account_info(id).await.unwrap();
     assert!(info.refcount > 0);
-  }
-
-  #[tokio::test]
-  async fn test_decode_block() {
-    let rpc = setup_rpc().await;
-    let hash = rpc.block_hash(Some(212894)).await.unwrap();
-    let block = rpc.block(hash).await;
-    match block {
-      Ok(Some(block)) => assert_eq!(block.block.header.number, 0),
-      _ => unreachable!()
-    }
   }
 }

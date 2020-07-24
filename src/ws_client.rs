@@ -28,17 +28,25 @@ use tungstenite::{
 use url::Url;
 use std::sync::Arc;
 
+
+#[derive(Debug)]
+pub enum Info {
+  Request(Request),
+  Close,
+}
+
 pub struct WsTransportClient {
-  req_tx: UnboundedSender<Request>,
+  req_tx: UnboundedSender<Info>,
   res_rx: UnboundedReceiver<Message>,
 }
+
 
 impl WsTransportClient {
 
   pub fn new(url: &str) -> Result<Self> {
     let url = Url::parse(&url).map_err(|err| format!("{:?}", err) )?;
     let (socket, _respose) = connect(url.clone())?;
-    let (req_tx, mut req_rx) = unbounded::<Request>();
+    let (req_tx, mut req_rx) = unbounded::<Info>();
     let (res_tx, res_rx) = unbounded::<Message>();
 
     let socket = Arc::new(socket);
@@ -48,7 +56,8 @@ impl WsTransportClient {
     std::thread::spawn(move || {
       let reader = unsafe { Arc::get_mut_unchecked(&mut reader) };
       loop {
-        match reader.read_message() {
+        let msg = reader.read_message();
+        match msg {
           Ok(response) => {
             let _ = res_tx.unbounded_send(response);
           },
@@ -60,12 +69,17 @@ impl WsTransportClient {
       }
     });
 
-    async_std::task::spawn(async move {
+    std::thread::spawn(move ||{
       let writer = unsafe { Arc::get_mut_unchecked(&mut writer) };
       loop {
-        if let Ok(Some(req)) = req_rx.try_next() {
-          let body = serde_json::to_string(&req).unwrap();
-          let _ = writer.write_message(Message::Text(body.clone()));
+        if let Ok(Some(info)) = req_rx.try_next() {
+          match info {
+            Info::Request(req) => {
+              let body = serde_json::to_string(&req).unwrap();
+              let _ = writer.write_message(Message::Text(body));
+            }
+            _ => break,
+          }
         } else {
           thread::sleep(Duration::from_millis(5));
         }
@@ -89,7 +103,7 @@ impl TransportClient for WsTransportClient {
   ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>
   {
     Box::pin(async move {
-      let _ = self.req_tx.unbounded_send(request);
+      let _ = self.req_tx.unbounded_send(Info::Request(request));
       Ok(())
     })
   }
@@ -114,6 +128,11 @@ impl TransportClient for WsTransportClient {
   }
 }
 
+impl Drop for WsTransportClient {
+  fn drop(&mut self) {
+    let _ = self.req_tx.unbounded_send(Info::Close);
+  }
+}
 
 pub fn create(url: &str) -> Client {
   let transport = WsTransportClient::new(url).unwrap();
