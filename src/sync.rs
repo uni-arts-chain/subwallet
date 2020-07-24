@@ -70,6 +70,7 @@ pub async fn scan(url: String, accounts: Vec<AccountId>) -> Result<()> {
             store.update(cur);
           }
         }
+        bar.finish();
         break;
       }
     } else {
@@ -78,6 +79,9 @@ pub async fn scan(url: String, accounts: Vec<AccountId>) -> Result<()> {
     }
     let current = cursor.load(Ordering::SeqCst);
     let pos = current - start_number as u64;
+    if pos > bar_length as u64 {
+      bar.set_position(bar_length as u64);
+    }
     if pos > bar.position() {
       bar.set_position(pos);
     }
