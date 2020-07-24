@@ -18,6 +18,12 @@ If you are a Rust developer, you can install via cargo:
 cargo install subwallet
 ```
 
+#### Build from source code
+```bash
+git clone https://github.com/yxf/subwallet.git
+cargo +nightly build --release
+```
+
 
 ## Usage
 

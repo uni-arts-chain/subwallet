@@ -63,7 +63,7 @@ impl WsTransportClient {
     async_std::task::spawn(async move {
       let writer = unsafe { Arc::get_mut_unchecked(&mut writer) };
       loop {
-        if let Ok(req) = req_rx.try_next() {
+        if let Ok(Some(req)) = req_rx.try_next() {
           let body = serde_json::to_string(&req).unwrap();
           let _ = writer.write_message(Message::Text(body.clone()));
         } else {
