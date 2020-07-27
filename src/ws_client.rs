@@ -135,7 +135,8 @@ impl Drop for WsTransportClient {
 }
 
 pub fn create(url: &str) -> Client {
-  let transport = WsTransportClient::new(url).unwrap();
+  let err = format!("Failed to connect to `{}`", &url);
+  let transport = WsTransportClient::new(url).expect(&err);
   let client = Client::from(RawClient::new(transport));
   client
 }

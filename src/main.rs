@@ -181,7 +181,6 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
       let accounts = addresses.iter().map(|address| {
         AccountId::from_ss58check(&address.addr).unwrap()
       }).collect();
-
       let config = rpc::Config::parse_from_file(config_file.as_path())?;
       let url = config.get_url(Network::Polkadot).ok_or("rpc url is not set")?;
       let rpc = Rpc::new(url).await;

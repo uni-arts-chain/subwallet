@@ -105,10 +105,24 @@ Example:
 ./subwallet setrpcurl wss://rpc.polkadot.io
 ```
 
+#### `transfer`
+Submit a transfer extrinsic.
+> Because `transfer` is not open on Polkadot network now, the transfer will fail.
+
+Example1: Use label
+```bash
+# Here `demo` is `15FarxkDPL7LPvBPd1RDMGugGFs8be2ijuHEuLJd9z67PdNm`, `ed` is `16Q55taKB1ggt3VgQ8EFTRkmYTgtNKb9xka8hqMqXMPLCNxU`
+./subwallet transfer demo ed 0.001
+```
+Example2: Use address
+```bash
+./subwallet transfer 15FarxkDPL7LPvBPd1RDMGugGFs8be2ijuHEuLJd9z67PdNm 16Q55taKB1ggt3VgQ8EFTRkmYTgtNKb9xka8hqMqXMPLCNxU 0.001
+```
+
 #### `getbalances`
 Show the balances of addresses
 
-Example:
+Example: 
 ```bash
 ./subwallet getbalances
 145CPZPTqovQNkYMwEJ1himG3GYEVW2jJrzWDR9mButvjca                              0 DOT

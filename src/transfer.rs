@@ -84,3 +84,45 @@ pub fn make_extrinsic<C: Crypto>(
   );
   Ok(xt)
 }
+
+
+#[cfg(test)]
+mod tests {
+  use runtime::{ BalancesCall, Call };
+  use crate::crypto::Sr25519;
+  use crate::wallet::Address;
+  use crate::primitives::{ AccountId };
+  use std::str::FromStr;
+  use super::*;
+  use codec::{Encode};
+  use sp_runtime::traits::Verify;
+
+  #[test]
+  fn test_make_extrinsic() {
+    let from_address = Address::generate::<Sr25519>();
+    let to_address = Address::generate::<Sr25519>();
+    let to_account_id = AccountId::from_ss58check(&to_address.addr).unwrap();
+    let call = Call::Balances(BalancesCall::transfer(to_account_id, 100));
+    let signer = from_address.into_pair::<Sr25519>();
+    let genesis_hash = crate::networks::POLKADOT_GENESIS_HASH;
+    let genesis_hash = Hash::from_str(&genesis_hash[2..]).unwrap();
+    let xt = make_extrinsic::<Sr25519>(call.clone(), 0, signer, genesis_hash).unwrap();
+
+    let (addr, signature, extra) = xt.signature.clone().unwrap();
+    let addiational = (
+      VERSION.spec_version,
+      VERSION.transaction_version,
+      genesis_hash,
+      genesis_hash,
+      (),
+      (),
+      (),
+      (),
+      (),
+      (),
+    );
+
+    let raw_payload = SignedPayload::from_raw(call, extra, addiational);
+    assert!(raw_payload.using_encoded(|payload| signature.verify(payload, &addr)));
+  }
+}

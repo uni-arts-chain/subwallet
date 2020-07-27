@@ -65,6 +65,9 @@ impl Config {
   }
 
   pub fn parse_from_file(path: &Path) -> Result<Self> {
+    if !path.exists() {
+      return Err("rpc url is not set".into());
+    }
     let data: String = fs::read_to_string(path)?;
     let config: Self = toml::from_str(&data)?;
     Ok(config)
@@ -295,6 +298,11 @@ impl Rpc {
 mod tests {
   use super::*;
   use sp_core::crypto::{ Ss58Codec, Ss58AddressFormat, set_default_ss58_version };
+  use runtime::{ BalancesCall, Call };
+  use crate::crypto::Ed25519;
+  use crate::wallet::Address;
+  use crate::primitives::{ AccountId };
+  use std::str::FromStr;
 
   #[test]
   fn test_config_parse_from_file() {
@@ -427,5 +435,21 @@ mod tests {
 
     let info = rpc.get_account_info(id).await.unwrap();
     assert!(info.refcount > 0);
+  }
+
+  #[tokio::test]
+  async fn submit_extrinsic_should_fail_since_transfer_is_disabled() {
+    let rpc = setup_rpc().await;
+    // let meta = rpc.metadata(None).await;
+    let from_address = Address::generate::<Ed25519>();
+    let to_address = Address::generate::<Ed25519>();
+    let to_account_id = AccountId::from_ss58check(&to_address.addr).unwrap();
+    let call = Call::Balances(BalancesCall::transfer(to_account_id, 100));
+    let signer = from_address.into_pair::<Ed25519>();
+    let genesis_hash = crate::networks::POLKADOT_GENESIS_HASH;
+    let genesis_hash = Hash::from_str(&genesis_hash[2..]).unwrap();
+    let xt = crate::transfer::make_extrinsic::<Ed25519>(call, 0, signer, genesis_hash).unwrap();
+    let result = rpc.submit_extrinsic(xt).await;
+    assert!(result.is_err());
   }
 }
