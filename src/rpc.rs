@@ -111,7 +111,8 @@ impl Config {
 }
 #[derive(Clone)]
 pub struct Rpc {
-  client: Client
+  client: Client,
+  pub url: String
 }
 
 impl Rpc {
@@ -123,8 +124,9 @@ impl Rpc {
     } else {
         jsonrpsee::http_client(&url)
     };
-    Rpc{
-      client
+    Self {
+      client,
+      url: url.clone(),
     }
   }
 

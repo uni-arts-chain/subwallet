@@ -1,7 +1,6 @@
 
 use futures::channel::mpsc::{ UnboundedSender, unbounded };
 use futures::executor::ThreadPool;
-use futures::join;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -16,7 +15,7 @@ use frame_system::{ Phase, RawEvent };
 use sp_core::crypto::{ Ss58Codec };
 
 use crate::rpc::*;
-use crate::error::Result;
+use crate::error::{ Result, Error };
 use crate::store::*;
 use frame_support::traits::{GetCallMetadata};
 // use frame_support::dispatch::{Callable, CallableCallFor};
@@ -45,11 +44,8 @@ pub async fn scan(url: String, accounts: Vec<AccountId>) -> Result<()> {
       )
     );
   }
-    
-
   drop(tx);
 
-  
   let bar_length = tip_number - start_number;
   let bar = ProgressBar::new(bar_length as u64);
   bar.set_style(ProgressStyle::default_bar()
@@ -59,6 +55,7 @@ pub async fn scan(url: String, accounts: Vec<AccountId>) -> Result<()> {
     if let Ok(recv) = rx.try_next() {
       if recv.is_some() {
         process(rpc.clone(), recv.unwrap()).await;
+
       } else {
         for account in accounts.iter() {
           let addr = account.to_ss58check();
@@ -154,19 +151,61 @@ async fn scan_task(
   step: u64,
   tip_number: u64)
 {
+  let mut finished = true;
+  let mut pos: u32 = 0;
   loop {
     let now = cursor.load(Ordering::SeqCst);
     if now > tip_number as u64 {
       break;
     }
-    let p = cursor.fetch_add(step, Ordering::SeqCst);
-    let start: u32 = p as u32;
-    let end: u32 = p as u32 + step as u32 - 1;
-    let (start_hash, end_hash) = join!(rpc.block_hash(Some(start)), rpc.block_hash(Some(end)));
+
+    let (start, end) = if finished {
+      let p = cursor.fetch_add(step, Ordering::SeqCst);
+      let start: u32 = p as u32;
+      let end: u32 = p as u32 + step as u32 - 1;
+      (start, end)
+    } else {
+      (pos, pos + step as u32 - 1)
+    };
+
+    let start_hash = match rpc.block_hash(Some(start)).await {
+      Ok(hash) => match hash {
+        Some(h) => h,
+        None => break,
+      },
+      Err(_) => {
+        let rpc = Rpc::new(rpc.url.clone()).await;
+        finished = false;
+        pos = start;
+        continue;
+      },
+    };
+
+    let end_hash = match rpc.block_hash(Some(end)).await {
+      Ok(hash) => hash,
+      Err(_) => {
+        let rpc = Rpc::new(rpc.url.clone()).await;
+        finished = false;
+        pos = start;
+        continue;
+      }
+    };
+
     let mut key = sp_core::twox_128(b"System").to_vec();
     key.extend(sp_core::twox_128(b"Events").to_vec());
     let keys = vec![sp_core::storage::StorageKey(key)];
-    let storage = rpc.query_storage(keys, start_hash.unwrap().unwrap(), end_hash.unwrap()).await.unwrap();
+    let storage = match rpc.query_storage(keys, start_hash, end_hash).await {
+      Ok(storage) => storage,
+      Err(err) => match err {
+        Error::Rpc(..) | Error::WsHandshake(..) | Error::WsError(..) => {
+          let rpc = Rpc::new(rpc.url.clone()).await;
+          finished = false;
+          pos = start;
+          continue;
+        },
+        _ => continue,
+      },
+    };
 
     for changeset in storage {
       let (_k, data) = changeset.changes[0].clone();
@@ -213,6 +252,8 @@ async fn scan_task(
         }
       }
     }
+
+    finished = true;
   }
   drop(tx);
 }
