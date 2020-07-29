@@ -1,10 +1,12 @@
 
 use crate::error::{ Error, Result };
 use futures::prelude::*;
-use futures::channel::mpsc::{ UnboundedSender, UnboundedReceiver, unbounded };
+// use futures::channel::mpsc::{ UnboundedSender, UnboundedReceiver, unbounded };
 use std::time::Duration;
 use std::pin::Pin;
 use std::thread;
+
+use std::sync::mpsc::{ channel, Sender, Receiver, TryRecvError };
 
 use jsonrpsee::{
   transport::{
@@ -36,8 +38,8 @@ pub enum Info {
 }
 
 pub struct WsTransportClient {
-  req_tx: UnboundedSender<Info>,
-  res_rx: UnboundedReceiver<Message>,
+  req_tx: Sender<Info>,
+  res_rx: Receiver<Message>,
 }
 
 
@@ -46,8 +48,8 @@ impl WsTransportClient {
   pub fn new(url: &str) -> Result<Self> {
     let url = Url::parse(&url).map_err(|err| format!("{:?}", err) )?;
     let (socket, _respose) = connect(url.clone())?;
-    let (req_tx, mut req_rx) = unbounded::<Info>();
-    let (res_tx, res_rx) = unbounded::<Message>();
+    let (req_tx, req_rx) = channel::<Info>();
+    let (res_tx, res_rx) = channel::<Message>();
 
     let socket = Arc::new(socket);
     let mut writer = socket.clone();
@@ -56,14 +58,17 @@ impl WsTransportClient {
     std::thread::spawn(move || {
       let reader = unsafe { Arc::get_mut_unchecked(&mut reader) };
       loop {
-        let msg = reader.read_message();
-        match msg {
+        match reader.read_message() {
           Ok(response) => {
-            let _ = res_tx.unbounded_send(response);
+            let _ = res_tx.send(response);
           },
           Err(err) => match err { 
-            WsError::ConnectionClosed | WsError::AlreadyClosed => break,
-            _ => continue,
+            WsError::ConnectionClosed | WsError::AlreadyClosed => {
+              break
+            },
+            _ => {
+              continue
+            }
           },
         }
       }
@@ -72,16 +77,15 @@ impl WsTransportClient {
     std::thread::spawn(move ||{
       let writer = unsafe { Arc::get_mut_unchecked(&mut writer) };
       loop {
-        if let Ok(Some(info)) = req_rx.try_next() {
-          match info {
+        match req_rx.recv() {
+          Ok(info) => match info {
             Info::Request(req) => {
               let body = serde_json::to_string(&req).unwrap();
               let _ = writer.write_message(Message::Text(body));
             }
             _ => break,
-          }
-        } else {
-          thread::sleep(Duration::from_millis(5));
+          },
+          Err(err) => continue,
         }
       }
     });
@@ -103,7 +107,7 @@ impl TransportClient for WsTransportClient {
   ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>
   {
     Box::pin(async move {
-      let _ = self.req_tx.unbounded_send(Info::Request(request));
+      let _ = self.req_tx.send(Info::Request(request));
       Ok(())
     })
   }
@@ -114,14 +118,19 @@ impl TransportClient for WsTransportClient {
   {
     
     Box::pin(async move {
-      match self.res_rx.try_next() {
-        Ok(Some(v)) => {
+      match self.res_rx.try_recv() {
+        Ok(v) => {
           let msg = v.into_text()?;
           Response::from_json(&msg).map_err(Into::into)
         },
-        _ => {
-          thread::sleep(Duration::from_millis(5));
-          Err("retry".into())
+        Err(err) => match err {
+          TryRecvError::Empty => {
+            thread::sleep(Duration::from_millis(5));
+            Err("retry".into())
+          },
+          TryRecvError::Disconnected => {
+            panic!("connection closed")
+          },
         },
       }
     })
@@ -130,7 +139,7 @@ impl TransportClient for WsTransportClient {
 
 impl Drop for WsTransportClient {
   fn drop(&mut self) {
-    let _ = self.req_tx.unbounded_send(Info::Close);
+    let _ = self.req_tx.send(Info::Close);
   }
 }
 

@@ -184,8 +184,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
       let config = rpc::Config::parse_from_file(config_file.as_path())?;
       let url = config.get_url(Network::Polkadot).ok_or("rpc url is not set")?;
       let rpc = Rpc::new(url).await;
-      let balances = rpc.get_balances(accounts).await?;
       let properties = rpc.system_properties().await?;
+      let balances = rpc.get_balances(accounts).await?;
       let decimals = properties["tokenDecimals"].as_u64().unwrap();
       let divider: Decimal = 10u64.saturating_pow(decimals as u32).into();
       let unit = properties["tokenSymbol"].as_str().unwrap();
@@ -216,7 +216,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
       //  let store = FileStore::get(addr.as_str());
       //  store.update(0);
       // }
-      sync::scan(url, accounts).await?;
+      sync::run(url, accounts).await?
     },
     ("listextrinsics", Some(matches)) => {
       let label = matches.value_of("label_or_address").unwrap();
