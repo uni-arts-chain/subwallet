@@ -48,6 +48,12 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
   let config_file = data_path.join("config.toml");
   let store = WalletStore::init(data_path.as_path().to_str());
 
+  if !config_file.exists() {
+    let mut config = rpc::Config::new();
+    config.set_url(Network::Polkadot, "wss://rpc.polkadot.io".to_string());
+    let _ = config.write_to_file(config_file.as_path());
+  }
+
   match matches.subcommand() {
     ("getnewaddress", Some(matches)) => {
       let label = matches.value_of("label").unwrap();
