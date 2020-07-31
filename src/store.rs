@@ -24,7 +24,13 @@ impl Extrinsic {
       _ => "❌",
     };
     let module_call = format!("{}::{}", self.module, self.call);
-    println!("{:<10} {:<55} {:<30} {:<6}", i, self.signer.as_ref().unwrap_or(&"-".to_string()), module_call, flag);
+    
+    println!("{:<10} {:<55} {:<30} {:<6}", 
+      i, 
+      self.signer.as_ref().unwrap_or(&"-".to_string()), 
+      module_call, 
+      flag,
+    );
   }
 }
 

@@ -1,15 +1,17 @@
 
 use futures::channel::mpsc::{ UnboundedSender, unbounded };
 use futures::executor::ThreadPool;
+use futures::future;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::{thread, time};
+use std::collections::BTreeMap;
 
 use codec::{ Decode, Compact };
 use indicatif::{ ProgressBar, ProgressStyle };
 
-use crate::primitives::{AccountId, EventRecord, SCAN_STEP, AccountsAndEvent, Hash };
+use crate::primitives::{AccountId, EventRecord, SCAN_STEP, Hash };
 use runtime::{ Event, SignedBlock };
 use frame_system::{ Phase, RawEvent };
 use sp_core::crypto::{ Ss58Codec };
@@ -69,27 +71,15 @@ impl Scanner {
         (pos, pos + self.step as u32 - 1)
       };
 
-      let start_hash = match rpc.block_hash(Some(start)).await {
-        Ok(hash) => match hash {
-          Some(h) => h,
-          None => break,
-        },
-        Err(_) => {
+      let hashes = future::join(rpc.block_hash(Some(start)), rpc.block_hash(Some(end))).await;
+      let (start_hash, end_hash) = match hashes {
+        (Ok(Some(start)), Ok(end)) => ( start, end ),
+        _ => {
           let rpc = Rpc::new(rpc.url.clone()).await;
           finished = false;
           pos = start;
-          continue;
+          continue
         },
-      };
-
-      let end_hash = match rpc.block_hash(Some(end)).await {
-        Ok(hash) => hash,
-        Err(_) => {
-          let rpc = Rpc::new(rpc.url.clone()).await;
-          finished = false;
-          pos = start;
-          continue;
-        }
       };
 
       let mut key = sp_core::twox_128(b"System").to_vec();
@@ -98,7 +88,7 @@ impl Scanner {
       let storage = match rpc.query_storage(keys, start_hash, end_hash).await {
         Ok(storage) => storage,
         Err(err) => match err {
-          Error::Rpc(..) | Error::WsHandshake(..) | Error::WsError(..) => {
+          Error::Rpc(..) | Error::WsHandshake(..) => {
             let rpc = Rpc::new(rpc.url.clone()).await;
             finished = false;
             pos = start;
@@ -115,7 +105,7 @@ impl Scanner {
           let compact_len = <Compact<u32>>::decode(&mut input).unwrap();
           let len = compact_len.0 as usize;
 
-          let mut targets = Vec::new();
+          let mut records_with_idx: BTreeMap<usize, Vec<EventRecord>> = BTreeMap::new();
           for _i in 0..len {
             let record = match EventRecord::decode(&mut input) {
               Ok(v) => v,
@@ -124,7 +114,11 @@ impl Scanner {
                 continue
               },
             };
-            let event_string = format!("{:?}", record.clone().event);
+
+            let index: usize = match record.phase {
+              Phase::ApplyExtrinsic(i) => i as usize,
+              _ => continue,
+            };
 
             let maybe: bool = match record.event {
               Event::system(RawEvent::ExtrinsicFailed(..)) => true,
@@ -132,22 +126,24 @@ impl Scanner {
               _ => false,
             };
 
-            let filtered_accouts = if maybe {
-              self.accounts.clone()
-            } else {
-              self.accounts.iter().filter(|id| {
-                let target = format!("{:?}", id);
-                event_string.as_str().contains(target.as_str())
-              }).map(|id| id.clone()).collect::<Vec<AccountId>>()
-            };
+            let event_string = format!("{:?}", record.event);
+            let filtered_accouts = self.accounts.iter().filter(|id| {
+              let target = format!("{:?}", id);
+              event_string.as_str().contains(target.as_str())
+            }).map(|id| id.clone()).collect::<Vec<AccountId>>();
 
-            if filtered_accouts.len() > 0 {
-              let accounts_and_event = (filtered_accouts, record.clone());
-              targets.push(accounts_and_event)
+            if maybe || filtered_accouts.len() > 0 {
+              if records_with_idx.get(&index).is_some() {
+                if let Some(v) = records_with_idx.get_mut(&index) {
+                  v.push(record.clone());
+                }
+              } else {
+                records_with_idx.insert(index, vec![record.clone()]);
+              }
             }
           }
 
-          if targets.len() > 0 {
+          if records_with_idx.len() > 0 {
             let block_hash = changeset.block;
             let block = match rpc.block(Some(block_hash)).await {
               Ok(signed) => signed.unwrap(),
@@ -155,7 +151,7 @@ impl Scanner {
                 continue
               }
             };
-            Self::process(block_hash, block, targets);
+            Self::process(block_hash, block, records_with_idx, self.accounts.clone());
           }
         }
       }
@@ -166,47 +162,58 @@ impl Scanner {
     drop(self.tx);
   }
 
-  fn process(block_hash: Hash, block: SignedBlock, targets: Vec<AccountsAndEvent>) {
+  fn process(
+    block_hash: Hash, 
+    block: SignedBlock, 
+    event_records: BTreeMap<usize, Vec<EventRecord>>,
+    accounts: Vec<AccountId>,
+  ) 
+  {
     let block = block.block;
     let number = block.header.number;
     let xts = block.extrinsics;
-    for target in targets.into_iter() {
-      let (accounts, record) = target;
 
-      let index: usize = match record.phase {
-        Phase::ApplyExtrinsic(i) => i as usize,
-        _ => return,
+    for (index, records) in event_records.iter() {
+      let is_failed = records.iter().find(|record| {
+        match record.event {
+          Event::system(RawEvent::ExtrinsicFailed(..)) => true,
+          _ => false
+        }
+      }).is_some();
+
+      let status = if is_failed {
+        "failed".to_string()
+      } else {
+        "success".to_string()
       };
 
-      let status: String = match record.event {
-        Event::system(RawEvent::ExtrinsicFailed(..)) => "failed".to_string(),
-        _ => "success".to_string(),
-      };
-      let xt = &xts[index];
-      let xt_string = format!("{:?}", xt);
-      let event_string = format!("{:?}", record.event);
-      let data = xt.function.get_call_metadata();
-      let mut signer: Option<String> = None;
-      if let Some((address, _, _)) = &xt.signature {
-        signer = Some(address.to_ss58check());
-      }
 
-      for account in accounts.iter() {
-        let account_string = format!("{:?}", account);
-        // extrinsic or event that contains account
-        if xt_string.as_str().contains(account_string.as_str()) || event_string.as_str().contains(account_string.as_str()) {
-          let extrinsic = Extrinsic {
-            block_number: number,
-            block_hash: format!("{:#x}", block_hash),
-            index: index as u32,
-            signer: signer.clone(),
-            status: status.clone(),
-            module: data.pallet_name.to_string(),
-            call: data.function_name.to_string(),
-          };
-          let addr = account.clone().to_ss58check();
-          let store = FileStore::get(addr.as_str());
-          store.save(extrinsic);
+      for record in records.iter() {
+        let xt = &xts[*index];
+        let xt_string = format!("{:?}", xt);
+        let event_string = format!("{:?}", record.event);
+        let data = xt.function.get_call_metadata();
+        let mut signer: Option<String> = None;
+        if let Some((address, _, _)) = &xt.signature {
+          signer = Some(address.to_ss58check());
+        }
+        for account in accounts.iter() {
+          let account_string = format!("{:?}", account);
+          // extrinsic or event that contains account
+          if xt_string.as_str().contains(account_string.as_str()) || event_string.as_str().contains(account_string.as_str()) {
+            let extrinsic = Extrinsic {
+              block_number: number,
+              block_hash: format!("{:#x}", block_hash),
+              index: *index as u32,
+              signer: signer.clone(),
+              status: status.clone(),
+              module: data.pallet_name.to_string(),
+              call: data.function_name.to_string(),
+            };
+            let addr = account.clone().to_ss58check();
+            let store = FileStore::get(addr.as_str());
+            store.save(extrinsic);
+          }
         }
       }
     }
@@ -221,13 +228,10 @@ pub async fn run(url: String, accounts: Vec<AccountId>) -> Result<()> {
   let rpc = Arc::new(Rpc::new(url.clone()).await);
   let tip_header = rpc.header(None).await?.unwrap();
   let tip_number = tip_header.number as u64;
-
   let (tx, mut rx) = unbounded();
   let mut scanner = Scanner::new(url.clone(), accounts, tx);
   scanner.cursor = Arc::new(AtomicU64::new(start_number as u64));
   scanner.tip_number = tip_number;
-
-  drop(rpc);
 
   let pool = ThreadPool::new()?;
 
@@ -255,3 +259,4 @@ pub async fn run(url: String, accounts: Vec<AccountId>) -> Result<()> {
   }
   Ok(())
 }
+

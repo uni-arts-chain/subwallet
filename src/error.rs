@@ -33,10 +33,7 @@ pub enum Error {
 
   #[error("Invalid SS58 address")]
   PublicKey(PublicError),
-
-  #[error("Websocket Error: {0}")]
-  WsError(#[from] tungstenite::Error),
-
+  
   /// Other error.
   #[error("Other error: {0}")]
   Other(String),

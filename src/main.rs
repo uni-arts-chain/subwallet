@@ -12,7 +12,6 @@ mod store;
 mod transfer;
 mod primitives;
 mod sync;
-mod ws_client;
 
 
 use sp_core::crypto::{Ss58AddressFormat, set_default_ss58_version };

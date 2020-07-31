@@ -119,8 +119,7 @@ impl Rpc {
 
   pub async fn new(url: String) -> Self {
     let client = if url.starts_with("ws://") || url.starts_with("wss://") {
-      // jsonrpsee::ws_client(&url).await.unwrap()
-      crate::ws_client::create(&url)
+      jsonrpsee::ws_client(&url).await.unwrap()
     } else if url.starts_with("http://") || url.starts_with("https://") {
       jsonrpsee::http_client(&url)
     } else {
