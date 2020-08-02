@@ -139,7 +139,6 @@ This command will scan all related data of addresses by quering storage of accou
 Example:
 ```bash
 ./subwallet syncextrinsics
-Starting scan from height 0 on wss://rpc.polkadot.io
 ⠁ [00:00:00] [==>-------------------------------------]     500/782531
 ```
 
