@@ -123,6 +123,11 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
       }
 
       let password = rpassword::read_password_from_tty(Some("Type password to encrypt seed: ")).ok();
+      let password_confirmation = rpassword::read_password_from_tty(Some("Type password again: ")).ok();
+
+      if password != password_confirmation {
+        return Err("Two passwords are inconsistent".into())
+      }
 
       let keystore = address.into_keystore(password);
 
