@@ -132,6 +132,26 @@ impl Address {
     }
   }
 
+  pub fn from_phrase<T: Crypto>(phrase: &str) -> Result<Self, ()> {
+    match T::Pair::from_phrase(phrase, None) {
+      Ok((pair, seed)) => {
+        let seed_slice: &[u8] = seed.as_ref();
+        let addr = T::to_address(&pair);
+        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as u64;
+        let address = Address {
+          label: String::default(),
+          addr: addr,
+          crypto_type: T::crypto_type().to_owned(),
+          network: Network::default().into(),
+          seed: seed_slice.to_vec(),
+          created_at: now,
+        };
+        Ok(address)
+      },
+      Err(_) => return Err(()),
+    }
+  }
+
   pub fn into_pair<T: Crypto>(&self) -> <T as Crypto>::Pair {
     T::pair_from_secret_slice(&self.seed[..]).unwrap()
   }
@@ -369,7 +389,7 @@ impl WalletStore {
       fs::create_dir_all(file.parent().unwrap()).expect("Failed to create wallet file");
     }
     let backend = Wallet::new(DEFAULT_WALLET_NAME.to_owned());
-    let db = FileDatabase::<Wallet, Bincode>::from_path(file, backend).expect("Failed to initialize file database.");
+    let db = FileDatabase::<Wallet, Bincode>::load_from_path_or(file, backend).expect("Failed to initialize file database.");
     Self(db)
   }
 

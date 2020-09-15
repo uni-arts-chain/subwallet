@@ -71,7 +71,7 @@ impl FileStore {
     file.push(format!("xt-{}", addr).as_str());
 
     let backend = Extrinsics::new(addr.to_owned());
-    let db = FileDatabase::<Extrinsics, Bincode>::from_path(file, backend).expect("Failed to initialize file database.");
+    let db = FileDatabase::<Extrinsics, Bincode>::load_from_path_or(file, backend).expect("Failed to initialize file database.");
     Self(db)
   }
 

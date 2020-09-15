@@ -122,7 +122,7 @@ impl Scanner {
 
             let maybe: bool = match record.event {
               Event::system(RawEvent::ExtrinsicFailed(..)) => true,
-              Event::utility(..) => true,
+              // Event::utility(..) => true,
               _ => false,
             };
 

@@ -11,7 +11,7 @@ mod rpc;
 mod store;
 mod transfer;
 mod primitives;
-mod sync;
+// mod sync;
 
 
 use sp_core::crypto::{Ss58AddressFormat, set_default_ss58_version };
@@ -75,6 +75,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         address.print();
       }
     }
+
     ("restore", Some(matches)) => {
       let file = matches.value_of("file").unwrap();
 
@@ -226,7 +227,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
       //  let store = FileStore::get(addr.as_str());
       //  store.update(0);
       // }
-      sync::run(url, accounts).await?
+      // sync::run(url, accounts).await?
     },
     ("listextrinsics", Some(matches)) => {
       let label = matches.value_of("label_or_address").unwrap();
